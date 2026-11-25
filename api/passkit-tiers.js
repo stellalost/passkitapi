@@ -104,8 +104,12 @@ if (!response.ok) {
 }
 
 return res.status(200).json({
-  status: "success",
-  tiers: result
+    status: "success",
+  passkitHttpStatus: response.status,
+  passkitStatusText: response.statusText,
+  contentType: response.headers.get("content-type"),
+  contentLength: response.headers.get("content-length"),
+  responseBody: result
 });
 
 } catch (error) {
