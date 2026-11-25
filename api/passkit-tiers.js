@@ -1,5 +1,6 @@
-
 const crypto = require("crypto");
+
+const ALLOWED_TIERS = ["circus", "access_z", "access_y", "access_x"];
 
 function base64url(value) {
   return Buffer.from(value)
@@ -39,6 +40,15 @@ module.exports = async (req, res) => {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  const tierId = req.query.tierId;
+
+  if (!ALLOWED_TIERS.includes(tierId)) {
+    return res.status(400).json({
+      status: "error",
+      message: "tierId must be one of: " + ALLOWED_TIERS.join(", ")
+    });
+  }
+
   const key = process.env.PASSKIT_API_KEY;
   const secret = process.env.PASSKIT_API_SECRET;
   const baseUrl = process.env.PASSKIT_API_BASE_URL;
@@ -54,69 +64,42 @@ module.exports = async (req, res) => {
   try {
     const token = createToken(key, secret);
 
-    const response = await fetch(
-      `${baseUrl.replace(/\/$/, "")}/members/tiers/list`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: token,
-          "Content-Type": "application/json",
-          Accept: "application/json"
-        },
-        body: JSON.stringify({
-            programId: programId,
-  filters: {
-    limit: 100,
-    offset: 0,
-    orderBy: "created",
-    orderAsc: true,
-    filterGroups: [{
-      condition: "AND",
-      fieldFilters: [{
-        filterField: "programId",
-        filterValue: programId,
-        filterOperator: "eq"
-              }]
-            }]
-          }
-        })
+    const url =
+      baseUrl.replace(/\/$/, "") +
+      "/members/tier/" +
+      encodeURIComponent(programId) +
+      "/" +
+      encodeURIComponent(tierId);
+
+    const response = await fetch(url, {
+      method: "GET",
+      headers: {
+        Authorization: token,
+        Accept: "application/json"
       }
-    );
-    
-const rawResponse = await response.text();
+    });
 
-let result;
+    const rawResponse = await response.text();
 
-try {
-  result = JSON.parse(rawResponse);
-} catch {
-  result = {
-    rawResponse: rawResponse.slice(0, 2000)
-  };
-}
+    let result;
+    try {
+      result = JSON.parse(rawResponse);
+    } catch {
+      result = { rawResponse: rawResponse.slice(0, 2000) };
+    }
 
-if (!response.ok) {
-  return res.status(502).json({
-    status: "error",
-    passkitStatus: response.status,
-    details: result
-  });
-}
-
-return res.status(200).json({
-    status: "success",
-  passkitHttpStatus: response.status,
-  passkitStatusText: response.statusText,
-  contentType: response.headers.get("content-type"),
-  contentLength: response.headers.get("content-length"),
-  responseBody: result
-});
-
-} catch (error) {
-  return res.status(500).json({
-    status: "error",
-    errorType: error.name,
-    message: error.message
-  });
-}
+    return res.status(response.ok ? 200 : 502).json({
+      status: response.ok ? "success" : "error",
+      requestedTierId: tierId,
+      passkitHttpStatus: response.status,
+      contentType: response.headers.get("content-type"),
+      responseBody: result
+    });
+  } catch (error) {
+    return res.status(500).json({
+      status: "error",
+      errorType: error.name,
+      message: error.message
+    });
+  }
 };
