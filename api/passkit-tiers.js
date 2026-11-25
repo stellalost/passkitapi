@@ -63,18 +63,16 @@ module.exports = async (req, res) => {
           "Content-Type": "application/json",
           Accept: "application/json"
         },
-        body: JSON.stringify({
-          filters: {
-            limit: 100,
-            offset: 0,
-            orderBy: "created",
-            orderAsc: true,
-            filterGroups: [{
-              condition: "AND",
-              fieldFilters: [{
-                filterField: "programId",
-                filterValue: programId,
-                filterOperator: "eq"
+       
+       body: JSON.stringify({
+  programId: programId,
+  filters: {
+    limit: 100,
+    offset: 0,
+    orderBy: "created",
+    orderAsc: true
+  }
+})
               }]
             }]
           }
