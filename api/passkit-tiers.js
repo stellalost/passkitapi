@@ -82,26 +82,37 @@ module.exports = async (req, res) => {
         })
       }
     );
+    
+const rawResponse = await response.text();
 
-    const result = await response.json();
+let result;
 
-    if (!response.ok) {
-      return res.status(502).json({
-        status: "error",
-        passkitStatus: response.status,
-        details: result
-      });
-    }
+try {
+  result = JSON.parse(rawResponse);
+} catch {
+  result = {
+    rawResponse: rawResponse.slice(0, 2000)
+  };
+}
 
-    return res.status(200).json({
-      status: "success",
-      tiers: result
-    });
+if (!response.ok) {
+  return res.status(502).json({
+    status: "error",
+    passkitStatus: response.status,
+    details: result
+  });
+}
 
-  } catch (error) {
-    return res.status(500).json({
-      status: "error",
-      message: "Could not retrieve PassKit tiers"
-    });
-  }
+return res.status(200).json({
+  status: "success",
+  tiers: result
+});
+
+} catch (error) {
+  return res.status(500).json({
+    status: "error",
+    errorType: error.name,
+    message: error.message
+  });
+}
 };
